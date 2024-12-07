@@ -3,6 +3,7 @@ package com.rest_template.service.impl;
 import com.rest_template.client.ExchangeRateClient;
 import com.rest_template.dto.AccountDTO;
 import com.rest_template.dto.UserDTO;
+import com.rest_template.dto.response.ExchangeRate;
 import com.rest_template.entity.Account;
 import com.rest_template.entity.User;
 import com.rest_template.repository.AccountRepository;
@@ -10,9 +11,13 @@ import com.rest_template.service.AccountService;
 import com.rest_template.service.UserService;
 import com.rest_template.util.MapperUtil;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,12 +31,14 @@ public class AccountServiceImpl implements AccountService {
     private final MapperUtil mapperUtil;
     private final UserService userService;
     private final ExchangeRateClient client;
+    private final RestTemplate restTemplate;
 
-    public AccountServiceImpl(AccountRepository accountRepository, MapperUtil mapperUtil, UserService userService, ExchangeRateClient client) {
+    public AccountServiceImpl(AccountRepository accountRepository, MapperUtil mapperUtil, UserService userService, ExchangeRateClient client, RestTemplate restTemplate) {
         this.accountRepository = accountRepository;
         this.mapperUtil = mapperUtil;
         this.userService = userService;
         this.client = client;
+        this.restTemplate = restTemplate;
     }
 
 
@@ -52,7 +59,39 @@ public class AccountServiceImpl implements AccountService {
 
     private Map<String, BigDecimal> getAllCurrenciesByBalance(BigDecimal balance,String baseCurrency){
 
-        Map<String, BigDecimal> exchangeRates=client.getAllCurrencies(apiKey,baseCurrency).getConversion_rates();
+        /// 1. Feign Client
+        //Map<String, BigDecimal> exchangeRates=client.getAllCurrencies(apiKey,baseCurrency).getConversion_rates();
+
+
+
+        /// 2. RestTemplate
+        //https://v6.exchangerate-api.com/v6/5c2e33d19f331a5934be65b3/latest/GBP
+        String baseURL="https://v6.exchangerate-api.com";
+        String URI=baseURL+ "/v6/"+apiKey+"/latest/"+baseCurrency;
+
+        //        Comment Out from HERE
+//        /// If We need to add a Query parameter to the Client URI with rest template
+//        UriComponentsBuilder builder= UriComponentsBuilder.fromUriString(URI)
+//                .queryParam("baseCurrency", String.join(baseCurrency));
+//
+//        /// Adding headers
+//        HttpHeaders headers= new HttpHeaders();
+//        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON)); // this is for adding data type
+//        headers.set("apiKey",apiKey); // this for adding security api key in header
+//
+//
+//        HttpEntity<String> entity= new HttpEntity<>(headers); // headers can not directly pass to the exchange method
+//        ResponseEntity<ExchangeRate>  allCurrencies= restTemplate.exchange(
+//           builder.toUriString(),
+//                HttpMethod.GET,
+//                entity,
+//                ExchangeRate.class
+//        );
+
+          //       to  HERE
+
+        ExchangeRate rateResponse= restTemplate.getForObject(URI,ExchangeRate.class);
+        Map<String, BigDecimal> exchangeRates= rateResponse.getConversion_rates();
         Map<String, BigDecimal> otherCurrencies= new HashMap<>();
         otherCurrencies=exchangeRates.entrySet().stream().collect(Collectors.toMap(
                 Map.Entry::getKey,
@@ -125,7 +164,16 @@ public class AccountServiceImpl implements AccountService {
 
     private Map<String, BigDecimal> getSelectedCurrenciesByBalance(BigDecimal balance,String baseCurrency, List<String> currencies){
 
-        Map<String, BigDecimal> exchangeRates=client.getAllCurrencies(apiKey,baseCurrency).getConversion_rates();
+        /// 1. Feign Client
+       // Map<String, BigDecimal> exchangeRates=client.getAllCurrencies(apiKey,baseCurrency).getConversion_rates();
+
+        /// 2. Rest Template;
+        String baseURL="https://v6.exchangerate-api.com";
+        String URI=baseURL+ "/v6/"+apiKey+"/latest/"+baseCurrency;
+
+        ExchangeRate rateResponse= restTemplate.getForObject(URI,ExchangeRate.class);
+        Map<String, BigDecimal> exchangeRates= rateResponse.getConversion_rates();
+
         Map<String, BigDecimal> otherCurrencies= new HashMap<>();
         otherCurrencies=exchangeRates.entrySet().stream().filter(entry ->currencies.
                         contains(entry.getKey())).
