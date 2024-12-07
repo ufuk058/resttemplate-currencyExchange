@@ -13,6 +13,7 @@ import com.rest_template.util.MapperUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -90,8 +91,21 @@ public class AccountServiceImpl implements AccountService {
 
           //       to  HERE
 
-        ExchangeRate rateResponse= restTemplate.getForObject(URI,ExchangeRate.class);
+//        ExchangeRate rateResponse= restTemplate.getForObject(URI,ExchangeRate.class);
+//        Map<String, BigDecimal> exchangeRates= rateResponse.getConversion_rates();
+
+        /// Third way of consuming Client API
+        RestClient restClient= RestClient.builder()
+                .baseUrl(baseURL)
+                .build();
+
+        ExchangeRate rateResponse=restClient.get()
+                .uri("/v6/"+apiKey+"/latest/"+baseCurrency)
+                .retrieve()
+                .body(ExchangeRate.class);
         Map<String, BigDecimal> exchangeRates= rateResponse.getConversion_rates();
+
+
         Map<String, BigDecimal> otherCurrencies= new HashMap<>();
         otherCurrencies=exchangeRates.entrySet().stream().collect(Collectors.toMap(
                 Map.Entry::getKey,
@@ -171,8 +185,28 @@ public class AccountServiceImpl implements AccountService {
         String baseURL="https://v6.exchangerate-api.com";
         String URI=baseURL+ "/v6/"+apiKey+"/latest/"+baseCurrency;
 
-        ExchangeRate rateResponse= restTemplate.getForObject(URI,ExchangeRate.class);
+//        ExchangeRate rateResponse= restTemplate.getForObject(URI,ExchangeRate.class);
+//        Map<String, BigDecimal> exchangeRates= rateResponse.getConversion_rates();
+
+        /// Third way of consuming Client API
+        RestClient restClient= RestClient.builder()
+                .baseUrl(baseURL)
+                .build();
+
+        /// Passing queryParam along with restClient
+//       ExchangeRate rateResponse1= restClient.get().uri(uriBuilder -> uriBuilder
+//                .queryParam("baseCurrency",baseCurrency).path("/v6/"+apiKey+"/latest/").build())
+//               .header("apiKey", apiKey)// this part is for authentication
+//                .retrieve()
+//                .body(ExchangeRate.class);
+
+
+        ExchangeRate rateResponse=restClient.get()
+                .uri("/v6/"+apiKey+"/latest/"+baseCurrency)
+                .retrieve()
+                .body(ExchangeRate.class);
         Map<String, BigDecimal> exchangeRates= rateResponse.getConversion_rates();
+
 
         Map<String, BigDecimal> otherCurrencies= new HashMap<>();
         otherCurrencies=exchangeRates.entrySet().stream().filter(entry ->currencies.
